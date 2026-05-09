@@ -1,0 +1,24 @@
+{
+  "runtime": "node",
+  "dockerfile": "Dockerfile",
+  "port": 3000,
+  "health": {
+    "path": "/health",
+    "expected_status": 200,
+    "expected_body_contains": "\"ok\":true"
+  },
+  "env_required": [
+    "DATABASE_URL",
+    "DRAGONFLY_URL",
+    "OPENROUTER_API_KEY",
+    "OPENROUTER_BASE_URL",
+    "ADMIN_TOKEN",
+    "NODE_ENV"
+  ],
+  "env_provided": {},
+  "dependencies": [
+    { "kind": "postgres", "scope": "database", "name": "paranoia" },
+    { "kind": "kv", "scope": "namespace", "name": "paranoia" }
+  ],
+  "resources": { "cpu": 1, "memory_mb": 512 }
+}
