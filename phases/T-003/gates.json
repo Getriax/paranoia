@@ -1,0 +1,96 @@
+{
+  "phase": "T-003",
+  "name": "Single-image Dockerfile + Coolify config",
+  "gates": [
+    {
+      "id": "g1-dockerfile-exists",
+      "type": "command_succeeds",
+      "command": "test -f /home/node/.openclaw/workspace/builds/paranoia/Dockerfile",
+      "weight": "blocking"
+    },
+    {
+      "id": "g2-dockerfile-multi-stage",
+      "type": "command_succeeds",
+      "command": "grep -c '^FROM node:22-alpine' /home/node/.openclaw/workspace/builds/paranoia/Dockerfile | grep -q '[2-9]'",
+      "weight": "blocking"
+    },
+    {
+      "id": "g3-dockerfile-non-root",
+      "type": "command_succeeds",
+      "command": "grep -q 'adduser.*app' /home/node/.openclaw/workspace/builds/paranoia/Dockerfile && grep -q 'USER app' /home/node/.openclaw/workspace/builds/paranoia/Dockerfile",
+      "weight": "blocking"
+    },
+    {
+      "id": "g4-dockerfile-healthcheck",
+      "type": "command_succeeds",
+      "command": "grep -q 'HEALTHCHECK' /home/node/.openclaw/workspace/builds/paranoia/Dockerfile",
+      "weight": "blocking"
+    },
+    {
+      "id": "g5-dockerfile-expose-3000",
+      "type": "command_succeeds",
+      "command": "grep -q 'EXPOSE 3000' /home/node/.openclaw/workspace/builds/paranoia/Dockerfile",
+      "weight": "blocking"
+    },
+    {
+      "id": "g6-dockerfile-builds-web",
+      "type": "command_succeeds",
+      "command": "grep -q 'pnpm.*build' /home/node/.openclaw/workspace/builds/paranoia/Dockerfile",
+      "weight": "blocking"
+    },
+    {
+      "id": "g7-dockerfile-copies-public",
+      "type": "command_succeeds",
+      "command": "grep -q 'public' /home/node/.openclaw/workspace/builds/paranoia/Dockerfile",
+      "weight": "blocking"
+    },
+    {
+      "id": "g8-dockerfile-cmd",
+      "type": "command_succeeds",
+      "command": "grep -q 'main.js' /home/node/.openclaw/workspace/builds/paranoia/Dockerfile",
+      "weight": "blocking"
+    },
+    {
+      "id": "g9-dockerignore-exists",
+      "type": "command_succeeds",
+      "command": "test -f /home/node/.openclaw/workspace/builds/paranoia/.dockerignore",
+      "weight": "blocking"
+    },
+    {
+      "id": "g10-dockerignore-excludes-node-modules",
+      "type": "command_succeeds",
+      "command": "grep -q 'node_modules' /home/node/.openclaw/workspace/builds/paranoia/.dockerignore",
+      "weight": "blocking"
+    },
+    {
+      "id": "g11-deploy-json-exists",
+      "type": "command_succeeds",
+      "command": "test -f /home/node/.openclaw/workspace/builds/paranoia/deploy.json",
+      "weight": "blocking"
+    },
+    {
+      "id": "g12-deploy-json-port",
+      "type": "command_succeeds",
+      "command": "grep -q '\"port\": 3000' /home/node/.openclaw/workspace/builds/paranoia/deploy.json",
+      "weight": "blocking"
+    },
+    {
+      "id": "g13-deploy-json-health",
+      "type": "command_succeeds",
+      "command": "grep -q '/health' /home/node/.openclaw/workspace/builds/paranoia/deploy.json",
+      "weight": "blocking"
+    },
+    {
+      "id": "g14-deploy-json-postgres-dep",
+      "type": "command_succeeds",
+      "command": "grep -q '\"kind\": \"postgres\"' /home/node/.openclaw/workspace/builds/paranoia/deploy.json",
+      "weight": "blocking"
+    },
+    {
+      "id": "g15-deploy-json-kv-dep",
+      "type": "command_succeeds",
+      "command": "grep -q '\"kind\": \"kv\"' /home/node/.openclaw/workspace/builds/paranoia/deploy.json",
+      "weight": "blocking"
+    }
+  ]
+}

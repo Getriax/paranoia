@@ -1,0 +1,9 @@
+{
+  "needsDeploy": true,
+  "instructions": "Deploy the paranoia app container via Coolify using the Dockerfile and deploy.json. The app must be accessible at https://paranoia.krulestwo.com. Verify health endpoint and SPA serving by sending HTTP requests to the public URL.",
+  "acceptance": [
+    "GET https://paranoia.krulestwo.com/health returns HTTP 200 with JSON body containing \"ok\":true",
+    "GET https://paranoia.krulestwo.com/ returns HTTP 200 with HTML content (the React SPA index page)",
+    "GET https://paranoia.krulestwo.com/nonexistent-route returns HTTP 200 with HTML (SPA fallback from ServeStaticModule)"
+  ]
+}
