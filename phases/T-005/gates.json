@@ -1,0 +1,102 @@
+{
+  "phase": "T-005",
+  "name": "NestJS bootstrap + health module",
+  "gates": [
+    {
+      "id": "g1-tsc",
+      "type": "command_succeeds",
+      "command": "cd /home/node/.openclaw/workspace/builds/paranoia/apps/server && npx tsc --noEmit",
+      "weight": "blocking"
+    },
+    {
+      "id": "g2-health-module",
+      "type": "command_succeeds",
+      "command": "test -f /home/node/.openclaw/workspace/builds/paranoia/apps/server/src/health/health.module.ts",
+      "weight": "blocking"
+    },
+    {
+      "id": "g3-health-controller",
+      "type": "command_succeeds",
+      "command": "test -f /home/node/.openclaw/workspace/builds/paranoia/apps/server/src/health/health.controller.ts",
+      "weight": "blocking"
+    },
+    {
+      "id": "g4-health-service",
+      "type": "command_succeeds",
+      "command": "test -f /home/node/.openclaw/workspace/builds/paranoia/apps/server/src/health/health.service.ts",
+      "weight": "blocking"
+    },
+    {
+      "id": "g5-env-validation",
+      "type": "command_succeeds",
+      "command": "test -f /home/node/.openclaw/workspace/builds/paranoia/apps/server/src/env/env.validation.ts",
+      "weight": "blocking"
+    },
+    {
+      "id": "g6-logger-module",
+      "type": "command_succeeds",
+      "command": "test -f /home/node/.openclaw/workspace/builds/paranoia/apps/server/src/logger/logger.module.ts",
+      "weight": "blocking"
+    },
+    {
+      "id": "g7-dragonfly-client",
+      "type": "command_succeeds",
+      "command": "test -f /home/node/.openclaw/workspace/builds/paranoia/apps/server/src/db/dragonfly.ts",
+      "weight": "blocking"
+    },
+    {
+      "id": "g8-deps-pino",
+      "type": "command_succeeds",
+      "command": "grep -q '\"nestjs-pino\"' /home/node/.openclaw/workspace/builds/paranoia/apps/server/package.json",
+      "weight": "blocking"
+    },
+    {
+      "id": "g9-deps-config",
+      "type": "command_succeeds",
+      "command": "grep -q '\"@nestjs/config\"' /home/node/.openclaw/workspace/builds/paranoia/apps/server/package.json",
+      "weight": "blocking"
+    },
+    {
+      "id": "g10-deps-terminus",
+      "type": "command_succeeds",
+      "command": "grep -q '\"@nestjs/terminus\"' /home/node/.openclaw/workspace/builds/paranoia/apps/server/package.json",
+      "weight": "blocking"
+    },
+    {
+      "id": "g11-deps-serve-static",
+      "type": "command_succeeds",
+      "command": "grep -q '\"@nestjs/serve-static\"' /home/node/.openclaw/workspace/builds/paranoia/apps/server/package.json",
+      "weight": "blocking"
+    },
+    {
+      "id": "g12-deps-ioredis",
+      "type": "command_succeeds",
+      "command": "grep -q '\"ioredis\"' /home/node/.openclaw/workspace/builds/paranoia/apps/server/package.json",
+      "weight": "blocking"
+    },
+    {
+      "id": "g13-deps-zod",
+      "type": "command_succeeds",
+      "command": "grep -q '\"zod\"' /home/node/.openclaw/workspace/builds/paranoia/apps/server/package.json",
+      "weight": "blocking"
+    },
+    {
+      "id": "g14-no-old-controller",
+      "type": "command_succeeds",
+      "command": "test ! -f /home/node/.openclaw/workspace/builds/paranoia/apps/server/src/app.controller.ts",
+      "weight": "blocking"
+    },
+    {
+      "id": "g15-main-shutdown",
+      "type": "command_succeeds",
+      "command": "grep -q 'enableShutdownHooks' /home/node/.openclaw/workspace/builds/paranoia/apps/server/src/main.ts",
+      "weight": "blocking"
+    },
+    {
+      "id": "g16-app-module-serve-static",
+      "type": "command_succeeds",
+      "command": "grep -q 'ServeStaticModule' /home/node/.openclaw/workspace/builds/paranoia/apps/server/src/app.module.ts",
+      "weight": "blocking"
+    }
+  ]
+}
