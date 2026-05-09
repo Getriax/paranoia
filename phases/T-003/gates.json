@@ -1,0 +1,96 @@
+{
+  "phase": "T-003",
+  "name": "Single-image Dockerfile + Coolify config",
+  "gates": [
+    {
+      "id": "dockerfile-exists",
+      "type": "command_succeeds",
+      "command": "test -f Dockerfile",
+      "weight": "blocking"
+    },
+    {
+      "id": "dockerfile-multi-stage",
+      "type": "command_succeeds",
+      "command": "grep -c '^FROM' Dockerfile | grep -q '[3-9]'",
+      "weight": "blocking"
+    },
+    {
+      "id": "dockerfile-non-root",
+      "type": "command_succeeds",
+      "command": "grep -q 'USER app' Dockerfile",
+      "weight": "blocking"
+    },
+    {
+      "id": "dockerfile-healthcheck",
+      "type": "command_succeeds",
+      "command": "grep -q 'HEALTHCHECK' Dockerfile",
+      "weight": "blocking"
+    },
+    {
+      "id": "dockerfile-port-3000",
+      "type": "command_succeeds",
+      "command": "grep -q 'EXPOSE 3000' Dockerfile",
+      "weight": "blocking"
+    },
+    {
+      "id": "dockerfile-react-build",
+      "type": "command_succeeds",
+      "command": "grep -q 'apps/web' Dockerfile",
+      "weight": "blocking"
+    },
+    {
+      "id": "deploy-json-exists",
+      "type": "command_succeeds",
+      "command": "test -f deploy.json",
+      "weight": "blocking"
+    },
+    {
+      "id": "deploy-json-env-vars",
+      "type": "command_succeeds",
+      "command": "python3 -c \"import json; d=json.load(open('deploy.json')); required=d['env_required']; assert 'DATABASE_URL' in required and 'DRAGONFLY_URL' in required and 'OPENROUTER_API_KEY' in required and 'OPENROUTER_BASE_URL' in required and 'ADMIN_TOKEN' in required and 'NODE_ENV' in required\"",
+      "weight": "blocking"
+    },
+    {
+      "id": "deploy-json-deps",
+      "type": "command_succeeds",
+      "command": "python3 -c \"import json; d=json.load(open('deploy.json')); deps=d['dependencies']; kinds=[x['kind'] for x in deps]; assert 'postgres' in kinds and 'kv' in kinds\"",
+      "weight": "blocking"
+    },
+    {
+      "id": "deploy-json-health-path",
+      "type": "command_succeeds",
+      "command": "python3 -c \"import json; d=json.load(open('deploy.json')); assert d['health']['path'] == '/health'\"",
+      "weight": "blocking"
+    },
+    {
+      "id": "dockerignore-exists",
+      "type": "command_succeeds",
+      "command": "test -f .dockerignore",
+      "weight": "blocking"
+    },
+    {
+      "id": "dockerignore-excludes-harness",
+      "type": "command_succeeds",
+      "command": "grep -q 'sessions' .dockerignore && grep -q 'dashboard' .dockerignore",
+      "weight": "blocking"
+    },
+    {
+      "id": "health-endpoint-ok-true",
+      "type": "command_succeeds",
+      "command": "grep -q 'ok.*true' apps/server/src/app.controller.ts",
+      "weight": "blocking"
+    },
+    {
+      "id": "serve-static-module-wired",
+      "type": "command_succeeds",
+      "command": "grep -q 'ServeStaticModule' apps/server/src/app.module.ts",
+      "weight": "blocking"
+    },
+    {
+      "id": "serve-static-dep",
+      "type": "command_succeeds",
+      "command": "grep -q '@nestjs/serve-static' apps/server/package.json",
+      "weight": "blocking"
+    }
+  ]
+}

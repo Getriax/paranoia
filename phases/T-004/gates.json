@@ -1,0 +1,36 @@
+{
+  "phase": "T-004",
+  "name": "Seed 50 starter topics",
+  "gates": [
+    {
+      "id": "topics-file-exists",
+      "type": "command_succeeds",
+      "command": "test -f apps/server/seeds/topics.json",
+      "weight": "blocking"
+    },
+    {
+      "id": "topics-valid-json",
+      "type": "command_succeeds",
+      "command": "python3 -c \"import json; data=json.load(open('apps/server/seeds/topics.json')); assert isinstance(data, list), 'Not a list'; assert len(data)==50, f'Expected 50, got {len(data)}'; [assert all(k in t for k in ('text','category','difficulty')) for t in data]\"",
+      "weight": "blocking"
+    },
+    {
+      "id": "topics-5-categories",
+      "type": "command_succeeds",
+      "command": "python3 -c \"import json; data=json.load(open('apps/server/seeds/topics.json')); cats=set(t['category'] for t in data); required={'relationships','world','hypothetical','personal','creative'}; assert cats==required, f'Missing: {required-cats}, Extra: {cats-required}'\"",
+      "weight": "blocking"
+    },
+    {
+      "id": "topics-3-difficulties",
+      "type": "command_succeeds",
+      "command": "python3 -c \"import json; data=json.load(open('apps/server/seeds/topics.json')); diffs=set(t['difficulty'] for t in data); required={'easy','medium','hard'}; assert diffs==required, f'Missing: {required-diffs}, Extra: {diffs-required}'\"",
+      "weight": "blocking"
+    },
+    {
+      "id": "topics-open-prompts",
+      "type": "command_succeeds",
+      "command": "python3 -c \"import json; data=json.load(open('apps/server/seeds/topics.json')); assert all(len(t['text'])>10 for t in data), 'All topics must be >10 chars'; assert all(t['text'].strip() for t in data), 'No empty topics'\"",
+      "weight": "blocking"
+    }
+  ]
+}
