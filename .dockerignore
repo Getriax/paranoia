@@ -1,0 +1,13 @@
+node_modules
+dist
+.git
+.env
+.env.*
+*.log
+sessions/
+dashboard/
+db/
+runner/
+harness/
+.vscode/
+coverage/
