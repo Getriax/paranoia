@@ -1,0 +1,9 @@
+{
+  "needsDeploy": true,
+  "instructions": "Deploy the Docker image via Coolify to paranoia.krulestwo.com. After deployment, verify the health endpoint and that the React SPA is served.",
+  "acceptance": [
+    "GET https://paranoia.krulestwo.com/health returns 200 with JSON containing \"ok\":true",
+    "GET https://paranoia.krulestwo.com/ returns HTML (React SPA index page)",
+    "GET https://paranoia.krulestwo.com/nonexistent-route returns HTML (SPA fallback, not 404 from server)"
+  ]
+}
