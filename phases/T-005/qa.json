@@ -1,0 +1,12 @@
+{
+  "needsDeploy": true,
+  "instructions": "Start the server with valid env vars (POSTGRES_URL pointing at a running Postgres, DRAGONFLY_URL pointing at a running Dragonfly/Redis, OPENROUTER_API_KEY with a valid key). Send HTTP GET /health and verify the response.",
+  "acceptance": [
+    "GET /health returns HTTP 200 with JSON body containing 'status': 'ok' at top level",
+    "GET /health response includes 'postgres' indicator with status 'up'",
+    "GET /health response includes 'dragonfly' indicator with status 'up'",
+    "GET /health response includes 'openrouter' indicator with status 'up'",
+    "Server logs structured JSON (or pretty-printed in dev mode) via pino on startup",
+    "Server shuts down gracefully on SIGTERM within 5 seconds"
+  ]
+}

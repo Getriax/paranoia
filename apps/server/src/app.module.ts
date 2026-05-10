@@ -1,19 +1,23 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { ServeStaticModule } from '@nestjs/serve-static';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-import { AppController } from './app.controller.js';
+import { join } from 'node:path';
+import { LoggerModule } from './logger/logger.module.js';
+import { HealthModule } from './health/health.module.js';
+import { envSchema } from './env/env.validation.js';
 
 @Module({
   imports: [
-    ServeStaticModule.forRoot({
-      rootPath: join(__dirname, 'public'),
-      exclude: ['/api/{*splat}', '/health'],
+    ConfigModule.forRoot({
+      isGlobal: true,
+      validate: (config) => envSchema.parse(config),
     }),
+    LoggerModule,
+    ServeStaticModule.forRoot({
+      rootPath: join(__dirname, '..', '..', 'public'),
+      exclude: ['/api/(.*)', '/health'],
+    }),
+    HealthModule,
   ],
-  controllers: [AppController],
 })
 export class AppModule {}
