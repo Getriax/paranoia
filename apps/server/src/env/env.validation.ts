@@ -7,6 +7,7 @@ export const envSchema = z.object({
   DRAGONFLY_URL: z.string().url().default('redis://localhost:6379'),
   OPENROUTER_API_KEY: z.string().min(1),
   OPENROUTER_BASE_URL: z.string().url().default('https://openrouter.ai/api/v1'),
+  MODIFIER_DEFAULT_MODEL: z.string().min(1).default('deepseek/deepseek-v4-flash'),
   ADMIN_TOKEN: z.string().min(1).optional(),
 });
 

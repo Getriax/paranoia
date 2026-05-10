@@ -87,7 +87,7 @@ export const game = pgTable(
     promptId: uuid("prompt_id").references(() => prompt.id),
     model: varchar("model", { length: 128 })
       .notNull()
-      .default("openai/gpt-4o-mini"),
+      .default("deepseek/deepseek-v4-flash"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),

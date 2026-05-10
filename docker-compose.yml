@@ -1,0 +1,55 @@
+# Local-dev infra for Paranoia.
+# Production uses Coolify-managed Postgres + Dragonfly — this file is dev-only.
+#
+# Usage:
+#   docker compose up -d                 # start postgres + dragonfly
+#   docker compose down                  # stop, keep volumes
+#   docker compose down -v               # stop, drop volumes (wipes data)
+#   docker compose logs -f postgres      # tail logs
+#
+# After first start, run from apps/server:
+#   pnpm --filter @openclaw/server db:push      # apply schema
+#   pnpm --filter @openclaw/server db:generate  # if you changed schema.ts
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: paranoia-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-paranoia}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - paranoia_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-paranoia}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  dragonfly:
+    image: docker.dragonflydb.io/dragonflydb/dragonfly:latest
+    container_name: paranoia-dragonfly
+    restart: unless-stopped
+    ulimits:
+      memlock: -1
+    ports:
+      - "${DRAGONFLY_PORT:-6379}:6379"
+    volumes:
+      - paranoia_dragonfly_data:/data
+    command:
+      - "--logtostderr"
+      - "--cluster_mode=emulated"
+      - "--lock_on_hashtags"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  paranoia_postgres_data:
+  paranoia_dragonfly_data:

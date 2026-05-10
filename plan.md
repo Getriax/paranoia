@@ -79,7 +79,7 @@ games (
   current_player_id UUID,
   game_mode         VARCHAR(20) DEFAULT 'paranoia',
   modifier_prompt_id UUID FK REFERENCES prompts(id),
-  modifier_model    VARCHAR(100),     -- OpenRouter model id, e.g. "anthropic/claude-haiku-4.5"
+  modifier_model    VARCHAR(100),     -- OpenRouter model id, default "deepseek/deepseek-v4-flash"
   created_at        TIMESTAMPTZ,
   started_at        TIMESTAMPTZ,
   finished_at       TIMESTAMPTZ
@@ -217,7 +217,7 @@ All payloads validated server-side via Zod DTOs. Shared types in `packages/share
 ## 5. Modifier contract & OpenRouter integration
 
 ### OpenRouter
-One unified API across providers. Model id format: `provider/model-name` (e.g., `anthropic/claude-haiku-4.5`, `openai/gpt-4o-mini`, `meta-llama/llama-3.1-70b-instruct`, `z-ai/glm-4-9b`). Supports OpenAI-compatible chat completions endpoint. Allows trivial A/B between models per game by varying `games.modifier_model`. Cost and latency vary widely; pick a default that balances both.
+One unified API across providers. Model id format: `provider/model-name` (default: `deepseek/deepseek-v4-flash`; alternates: `anthropic/claude-haiku-4.5`, `openai/gpt-4o-mini`, `meta-llama/llama-3.1-70b-instruct`, `z-ai/glm-4-9b`). Supports OpenAI-compatible chat completions endpoint. Allows trivial A/B between models per game by varying `games.modifier_model`. Cost and latency vary widely; the default targets low cost + low latency.
 
 ### Modifier prompt loading
 On game start, server fetches the currently active `modifier` prompt from `prompts` table (highest version with `active=true`). Snapshots `prompt_id` and `model` into the `games` row. Subsequent messages in that game use the same snapshot, even if a newer prompt is activated mid-game.
