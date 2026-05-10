@@ -11,8 +11,22 @@ loadEnv({ path: join(__dirname, '..', '.env') });
 const { NestFactory } = await import('@nestjs/core');
 const { Logger } = await import('nestjs-pino');
 const { AppModule } = await import('./app.module.js');
+const { runMigrations } = await import('./db/migrate.js');
 
 async function bootstrap() {
+  if (process.env.RUN_MIGRATIONS_ON_BOOT !== 'false') {
+    const startedAt = Date.now();
+    try {
+      await runMigrations();
+      // eslint-disable-next-line no-console
+      console.log(`[migrate] applied in ${Date.now() - startedAt}ms`);
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('[migrate] failed', err);
+      process.exit(1);
+    }
+  }
+
   const app = await NestFactory.create(AppModule, {
     bufferLogs: true,
   });

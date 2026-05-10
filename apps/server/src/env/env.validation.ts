@@ -11,6 +11,7 @@ export const envSchema = z.object({
   ENGAGEMENT_ANALYSIS_ENABLED: z.enum(['true', 'false']).default('true'),
   ENGAGEMENT_MODEL: z.string().min(1).optional(),
   ADMIN_TOKEN: z.string().min(1).optional(),
+  RUN_MIGRATIONS_ON_BOOT: z.enum(['true', 'false']).default('true'),
 });
 
 export type Env = z.infer<typeof envSchema>;
