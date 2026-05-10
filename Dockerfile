@@ -12,7 +12,11 @@ RUN pnpm install --frozen-lockfile
 FROM node:22-alpine AS build
 RUN corepack enable && corepack prepare pnpm@10.32.1 --activate
 WORKDIR /app
-COPY --from=deps /app ./
+COPY pnpm-lock.yaml pnpm-workspace.yaml .npmrc package.json tsconfig.base.json ./
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/apps/server/node_modules ./apps/server/node_modules
+COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
+COPY --from=deps /app/packages/shared/node_modules ./packages/shared/node_modules
 COPY packages/shared ./packages/shared
 RUN pnpm --filter @openclaw/shared build
 COPY apps/web ./apps/web
@@ -27,6 +31,10 @@ WORKDIR /app
 COPY --from=build /app/apps/server/dist ./dist
 COPY --from=build /app/apps/web/dist ./public
 COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/apps/server/node_modules ./apps/server/node_modules
+COPY --from=build /app/apps/web/node_modules ./apps/web/node_modules
+COPY --from=build /app/packages/shared/node_modules ./packages/shared/node_modules
+COPY --from=build /app/packages/shared/dist ./packages/shared/dist
 USER app
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
