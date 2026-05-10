@@ -31,7 +31,9 @@ WORKDIR /app
 COPY --from=build /app/apps/server/dist ./dist
 COPY --from=build /app/apps/web/dist ./public
 COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/apps/server/node_modules ./apps/server/node_modules
 COPY --from=build /app/packages/shared ./packages/shared
+COPY --from=build /app/packages/shared/node_modules ./packages/shared/node_modules
 COPY --from=build /app/pnpm-workspace.yaml ./pnpm-workspace.yaml
 USER app
 EXPOSE 3000
