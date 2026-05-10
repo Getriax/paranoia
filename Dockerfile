@@ -32,7 +32,7 @@ RUN npm install --omit=dev --ignore-scripts
 
 # --- runtime ---
 FROM node:22-alpine AS runtime
-RUN addgroup -S app && adduser -S app -G app
+RUN apk add --no-cache wget && addgroup -S app && adduser -S app -G app
 WORKDIR /app
 COPY --from=build /app/apps/server/dist ./dist
 COPY --from=build /app/apps/web/dist ./public
