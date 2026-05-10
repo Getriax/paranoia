@@ -35,7 +35,7 @@ COPY --from=deps /app/packages/shared ./packages/shared
 COPY --from=deps /app/packages/shared/node_modules ./packages/shared/node_modules
 COPY --from=build /app/packages/shared/dist ./packages/shared/dist
 COPY --from=build /app/apps/server ./apps/server
-RUN pnpm --filter @openclaw/server deploy --prod /app/bundle
+RUN mkdir -p /app/bundle && pnpm --filter @openclaw/server deploy --prod /app/bundle
 
 # --- runtime ---
 FROM node:22-alpine AS runtime
