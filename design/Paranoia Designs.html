@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Paranoia · 3 design directions</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  html, body { margin: 0; padding: 0; background: #f0eee9; height: 100%; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+  #root { height: 100vh; }
+</style>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="dossier.jsx"></script>
+
+<script type="text/babel" data-presets="react">
+const { DesignCanvas, DCSection, DCArtboard } = window;
+const SCREEN_W = 375;
+const SCREEN_H = 812;
+
+function App() {
+  return (
+    <DesignCanvas>
+      <DCSection
+        id="dossier"
+        title="Dossier"
+        subtitle="Investigative document. Mono type, redactions, classified stamps. The conversation is now a bubble chat using the file palette.">
+        <DCArtboard id="d-setup"   label="Setup"   width={SCREEN_W} height={SCREEN_H}><DossierSetup /></DCArtboard>
+        <DCArtboard id="d-lobby"   label="Lobby · Waiting"   width={SCREEN_W} height={SCREEN_H}><DossierLobby /></DCArtboard>
+        <DCArtboard id="d-ready"   label="Lobby · Ready"   width={SCREEN_W} height={SCREEN_H}><DossierReady /></DCArtboard>
+        <DCArtboard id="d-active"  label="Chat"    width={SCREEN_W} height={SCREEN_H}><DossierActive /></DCArtboard>
+        <DCArtboard id="d-voting"  label="Voting"  width={SCREEN_W} height={SCREEN_H}><DossierVoting /></DCArtboard>
+        <DCArtboard id="d-results" label="Results" width={SCREEN_W} height={SCREEN_H}><DossierResults /></DCArtboard>
+      </DCSection>
+    </DesignCanvas>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
