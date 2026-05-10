@@ -33,7 +33,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/apps/server/node_modules ./apps/server/node_modules
 COPY --from=deps /app/packages/shared ./packages/shared
 COPY --from=deps /app/packages/shared/node_modules ./packages/shared/node_modules
-COPY --from=deps /app/packages/shared/dist ./packages/shared/dist
+COPY --from=build /app/packages/shared/dist ./packages/shared/dist
 COPY --from=build /app/apps/server ./apps/server
 RUN mkdir -p /app/bundle && cd apps/server && pnpm deploy --prod --dir /app/bundle
 
