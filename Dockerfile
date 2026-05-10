@@ -24,14 +24,21 @@ RUN pnpm --filter @openclaw/web build
 COPY apps/server ./apps/server
 RUN pnpm --filter @openclaw/server build
 
+# --- prod-deps ---
+FROM node:22-alpine AS prod-deps
+RUN corepack enable && corepack prepare pnpm@10.32.1 --activate
+WORKDIR /app
+COPY apps/server/package.json ./package.json
+# Create a minimal lockfile and install only prod deps
+RUN echo '{}' > pnpm-lock.yaml && pnpm install --prod
+
 # --- runtime ---
 FROM node:22-alpine AS runtime
 RUN addgroup -S app && adduser -S app -G app
 WORKDIR /app
 COPY --from=build /app/apps/server/dist ./dist
 COPY --from=build /app/apps/web/dist ./public
-COPY --from=build /app/apps/server/node_modules ./node_modules
-COPY apps/server/package.json ./
+COPY --from=prod-deps /app/node_modules ./node_modules
 USER app
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
