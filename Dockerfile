@@ -24,24 +24,24 @@ RUN pnpm --filter @openclaw/web build
 COPY apps/server ./apps/server
 RUN pnpm --filter @openclaw/server build
 
-# --- flatten ---
-FROM node:22-alpine AS flatten
+# --- bundle ---
+FROM node:22-alpine AS bundle
+RUN corepack enable && corepack prepare pnpm@10.32.1 --activate
 WORKDIR /app
-COPY --from=build /app/apps/server/package.json ./
-COPY scripts/flatten-node-modules.sh /flatten.sh
-COPY --from=build /app/node_modules ./node_modules
-COPY --from=build /app/apps/server/node_modules ./node_modules-server
-COPY --from=build /app/packages/shared/node_modules ./node_modules-shared
-RUN sh /flatten.sh
+COPY pnpm-lock.yaml pnpm-workspace.yaml .npmrc package.json ./
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/apps/server/node_modules ./apps/server/node_modules
+COPY --from=deps /app/packages/shared ./packages/shared
+COPY --from=deps /app/packages/shared/node_modules ./packages/shared/node_modules
+COPY --from=build /app/apps/server ./apps/server
+RUN cd apps/server && pnpm deploy --prod --dir /app/bundle
 
 # --- runtime ---
 FROM node:22-alpine AS runtime
 RUN apk add --no-cache wget && addgroup -S app && adduser -S app -G app
 WORKDIR /app
-COPY --from=build /app/apps/server/dist ./dist
+COPY --from=bundle /app/bundle ./
 COPY --from=build /app/apps/web/dist ./public
-COPY --from=flatten /app/node_modules ./node_modules
-COPY --from=flatten /app/package.json ./
 USER app
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
