@@ -47,5 +47,6 @@
     "tsx": "^4.19.0",
     "typescript": "^5.9.3",
     "vitest": "^2.1.9"
-  }
+  },
+  "main": "./dist/main.js"
 }
