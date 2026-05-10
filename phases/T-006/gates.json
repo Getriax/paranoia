@@ -1,0 +1,114 @@
+{
+  "phase": "T-006",
+  "name": "Socket.IO gateway with auth",
+  "gates": [
+    {
+      "id": "g1-shared-builds",
+      "type": "command_succeeds",
+      "command": "cd /home/node/.openclaw/workspace/builds/paranoia && pnpm --filter @openclaw/shared build",
+      "weight": "blocking"
+    },
+    {
+      "id": "g2-server-tsc",
+      "type": "command_succeeds",
+      "command": "cd /home/node/.openclaw/workspace/builds/paranoia/apps/server && npx tsc --noEmit",
+      "weight": "blocking"
+    },
+    {
+      "id": "g3-deps-websockets",
+      "type": "command_succeeds",
+      "command": "grep -q '\"@nestjs/websockets\"' /home/node/.openclaw/workspace/builds/paranoia/apps/server/package.json",
+      "weight": "blocking"
+    },
+    {
+      "id": "g4-deps-platform-socketio",
+      "type": "command_succeeds",
+      "command": "grep -q '\"@nestjs/platform-socket.io\"' /home/node/.openclaw/workspace/builds/paranoia/apps/server/package.json",
+      "weight": "blocking"
+    },
+    {
+      "id": "g5-deps-socketio",
+      "type": "command_succeeds",
+      "command": "grep -q '\"socket.io\"' /home/node/.openclaw/workspace/builds/paranoia/apps/server/package.json",
+      "weight": "blocking"
+    },
+    {
+      "id": "g6-gateway-exists",
+      "type": "command_succeeds",
+      "command": "test -f /home/node/.openclaw/workspace/builds/paranoia/apps/server/src/ws/game.gateway.ts",
+      "weight": "blocking"
+    },
+    {
+      "id": "g7-ws-module-exists",
+      "type": "command_succeeds",
+      "command": "test -f /home/node/.openclaw/workspace/builds/paranoia/apps/server/src/ws/ws.module.ts",
+      "weight": "blocking"
+    },
+    {
+      "id": "g8-session-service-exists",
+      "type": "command_succeeds",
+      "command": "test -f /home/node/.openclaw/workspace/builds/paranoia/apps/server/src/ws/session.service.ts",
+      "weight": "blocking"
+    },
+    {
+      "id": "g9-auth-guard-exists",
+      "type": "command_succeeds",
+      "command": "test -f /home/node/.openclaw/workspace/builds/paranoia/apps/server/src/ws/ws-auth.guard.ts",
+      "weight": "blocking"
+    },
+    {
+      "id": "g10-gateway-decorator",
+      "type": "command_succeeds",
+      "command": "grep -q '@WebSocketGateway' /home/node/.openclaw/workspace/builds/paranoia/apps/server/src/ws/game.gateway.ts",
+      "weight": "blocking"
+    },
+    {
+      "id": "g11-ping-config",
+      "type": "command_succeeds",
+      "command": "grep -q 'pingInterval' /home/node/.openclaw/workspace/builds/paranoia/apps/server/src/ws/game.gateway.ts",
+      "weight": "blocking"
+    },
+    {
+      "id": "g12-handle-connection",
+      "type": "command_succeeds",
+      "command": "grep -q 'handleConnection' /home/node/.openclaw/workspace/builds/paranoia/apps/server/src/ws/game.gateway.ts",
+      "weight": "blocking"
+    },
+    {
+      "id": "g13-handle-disconnect",
+      "type": "command_succeeds",
+      "command": "grep -q 'handleDisconnect' /home/node/.openclaw/workspace/builds/paranoia/apps/server/src/ws/game.gateway.ts",
+      "weight": "blocking"
+    },
+    {
+      "id": "g14-sessionToken-handshake",
+      "type": "command_succeeds",
+      "command": "grep -q 'sessionToken' /home/node/.openclaw/workspace/builds/paranoia/apps/server/src/ws/game.gateway.ts",
+      "weight": "blocking"
+    },
+    {
+      "id": "g15-room-join",
+      "type": "command_succeeds",
+      "command": "grep -q 'game:' /home/node/.openclaw/workspace/builds/paranoia/apps/server/src/ws/game.gateway.ts",
+      "weight": "blocking"
+    },
+    {
+      "id": "g16-wsmodule-in-app",
+      "type": "command_succeeds",
+      "command": "grep -q 'WsModule' /home/node/.openclaw/workspace/builds/paranoia/apps/server/src/app.module.ts",
+      "weight": "blocking"
+    },
+    {
+      "id": "g17-shared-schemas",
+      "type": "command_succeeds",
+      "command": "grep -q 'lobbyCreateSchema' /home/node/.openclaw/workspace/builds/paranoia/packages/shared/src/index.ts",
+      "weight": "blocking"
+    },
+    {
+      "id": "g18-shared-event-constants",
+      "type": "command_succeeds",
+      "command": "grep -q 'ClientEvents' /home/node/.openclaw/workspace/builds/paranoia/packages/shared/src/index.ts",
+      "weight": "blocking"
+    }
+  ]
+}

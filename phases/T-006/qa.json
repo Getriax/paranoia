@@ -1,0 +1,16 @@
+{
+  "needsDeploy": true,
+  "instructions": "Start the server with valid env vars (POSTGRES_URL, DRAGONFLY_URL, OPENROUTER_API_KEY). Connect a Socket.IO client to the server and exercise the auth handshake, room join, and reconnect flows.",
+  "acceptance": [
+    "Socket.IO client connects successfully without a sessionToken (new connection for lobby creation)",
+    "Socket.IO client connects with a valid sessionToken and is auto-joined to the correct game:{gameId} room",
+    "Socket.IO client connecting with an invalid sessionToken receives an error event and is disconnected",
+    "Server sends ping frames at the configured interval and client receives pong response",
+    "lobby:create event with valid payload returns lobby:created response with roomCode, gameId, playerId, sessionToken",
+    "lobby:join event with valid payload returns lobby:joined response and emits lobby:player_joined to the room",
+    "game:message event without auth (no sessionToken) is rejected with an error",
+    "Disconnecting a player emits game:opponent_disconnected to the room with a reconnectDeadline",
+    "Reconnecting with the same sessionToken within 30s emits game:opponent_reconnected to the room and preserves room membership",
+    "All event payloads that fail Zod validation are rejected with an error event containing code and message"
+  ]
+}
