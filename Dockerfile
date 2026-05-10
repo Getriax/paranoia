@@ -6,7 +6,7 @@ COPY pnpm-lock.yaml pnpm-workspace.yaml .npmrc package.json ./
 COPY apps/server/package.json apps/server/package.json
 COPY apps/web/package.json apps/web/package.json
 COPY packages/shared/package.json packages/shared/package.json
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile --store-dir /tmp/pnpm-store
 
 # --- build ---
 FROM node:22-alpine AS build
@@ -40,6 +40,7 @@ FROM node:22-alpine AS runtime
 RUN apk add --no-cache wget && addgroup -S app && adduser -S app -G app
 WORKDIR /app
 COPY --from=bundle /app/bundle ./
+COPY --from=build /app/apps/web/dist ./public
 USER app
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
