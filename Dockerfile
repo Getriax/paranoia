@@ -24,17 +24,19 @@ RUN pnpm --filter @openclaw/web build
 COPY apps/server ./apps/server
 RUN pnpm --filter @openclaw/server build
 
+# --- prod-install (using npm to avoid pnpm symlink issues) ---
+FROM node:22-alpine AS prod-deps
+WORKDIR /app
+COPY apps/server/package.json ./package.json
+RUN npm install --omit=dev --ignore-scripts
+
 # --- runtime ---
 FROM node:22-alpine AS runtime
 RUN addgroup -S app && adduser -S app -G app
 WORKDIR /app
 COPY --from=build /app/apps/server/dist ./dist
 COPY --from=build /app/apps/web/dist ./public
-COPY --from=build /app/node_modules ./node_modules
-COPY --from=build /app/apps/server/node_modules ./apps/server/node_modules
-COPY --from=build /app/apps/web/node_modules ./apps/web/node_modules
-COPY --from=build /app/packages/shared/node_modules ./packages/shared/node_modules
-COPY --from=build /app/packages/shared/dist ./packages/shared/dist
+COPY --from=prod-deps /app/node_modules ./node_modules
 USER app
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
