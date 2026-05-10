@@ -3,3 +3,6 @@ packages:
   - db
   - 'apps/*'
   - 'packages/*'
+onlyBuiltDependencies:
+  - '@nestjs/core'
+  - esbuild

@@ -6,8 +6,7 @@ COPY pnpm-lock.yaml pnpm-workspace.yaml .npmrc package.json ./
 COPY apps/server/package.json apps/server/package.json
 COPY apps/web/package.json apps/web/package.json
 COPY packages/shared/package.json packages/shared/package.json
-ENV PNPM_HOME=/root/.local/share/pnpm
-RUN pnpm config set onlyBuiltDependencies "@nestjs/core,esbuild" && pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile
 
 # --- build ---
 FROM node:22-alpine AS build
