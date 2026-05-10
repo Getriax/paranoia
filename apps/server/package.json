@@ -24,7 +24,7 @@
     "@nestjs/serve-static": "^5.0.5",
     "@nestjs/terminus": "^11.1.1",
     "@nestjs/websockets": "^11.1.19",
-    "@openclaw/shared": "file:../packages/shared",
+    "@openclaw/shared": "workspace:*",
     "dotenv": "^17.4.2",
     "drizzle-orm": "^0.44.0",
     "ioredis": "^5.10.1",
