@@ -11,7 +11,7 @@ import { AppController } from './app.controller.js';
   imports: [
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, 'public'),
-      exclude: ['/api/(.*)', '/health'],
+      exclude: ['/api/{*splat}', '/health'],
     }),
   ],
   controllers: [AppController],
