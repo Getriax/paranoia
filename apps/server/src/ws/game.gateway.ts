@@ -9,9 +9,13 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { Logger, UseGuards } from '@nestjs/common';
-import { SessionService } from './session.service.js';
+import { SessionService } from '../session/session.service.js';
 import { WsAuthGuard } from './ws-auth.guard.js';
 import { dragonfly } from '../db/dragonfly.js';
+import { LobbyService } from '../lobby/lobby.service.js';
+import { GameService } from '../game/game.service.js';
+import { VotingService } from '../voting/voting.service.js';
+import { EngagementService } from '../engagement/engagement.service.js';
 import {
   ClientEvents,
   ServerEvents,
@@ -35,7 +39,13 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   private readonly logger = new Logger(GameGateway.name);
 
-  constructor(private readonly sessionService: SessionService) {}
+  constructor(
+    private readonly sessionService: SessionService,
+    private readonly lobbyService: LobbyService,
+    private readonly gameService: GameService,
+    private readonly votingService: VotingService,
+    private readonly engagementService: EngagementService,
+  ) {}
 
   async handleConnection(client: Socket): Promise<void> {
     const auth = handshakeAuthSchema.safeParse(client.handshake.auth);
@@ -111,16 +121,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       });
       return;
     }
-
-    this.logger.log(
-      `lobby:create from ${client.id} — nickname=${parsed.data.nickname}`,
-    );
-
-    // Stub: actual game/player creation is T-007+ scope
-    client.emit(ServerEvents.ERROR, {
-      code: 'NOT_IMPLEMENTED',
-      message: 'Lobby creation not yet implemented',
-    });
+    await this.lobbyService.createLobby(client, parsed.data);
   }
 
   @SubscribeMessage(ClientEvents.LOBBY_JOIN)
@@ -136,16 +137,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       });
       return;
     }
-
-    this.logger.log(
-      `lobby:join from ${client.id} — roomCode=${parsed.data.roomCode}`,
-    );
-
-    // Stub: actual join logic is T-007+ scope
-    client.emit(ServerEvents.ERROR, {
-      code: 'NOT_IMPLEMENTED',
-      message: 'Lobby join not yet implemented',
-    });
+    await this.lobbyService.joinLobby(this.server, client, parsed.data);
   }
 
   @UseGuards(WsAuthGuard)
@@ -162,12 +154,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       });
       return;
     }
-
-    this.logger.log(
-      `game:message from player ${client.data.player.id} — text length=${parsed.data.text.length}`,
-    );
-
-    // Stub: actual modifier pipeline is T-007+ scope
+    await this.gameService.handleMessage(this.server, client, parsed.data);
   }
 
   @UseGuards(WsAuthGuard)
@@ -184,12 +171,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       });
       return;
     }
-
-    this.logger.log(
-      `vote:submit from player ${client.data.player.id} — ${parsed.data.votes.length} vote(s)`,
-    );
-
-    // Stub: actual vote recording is later scope
+    await this.votingService.submitVotes(this.server, client, parsed.data);
   }
 
   @UseGuards(WsAuthGuard)
@@ -206,11 +188,6 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       });
       return;
     }
-
-    this.logger.log(
-      `survey:submit from player ${client.data.player.id} — rating=${parsed.data.rating}`,
-    );
-
-    // Stub: actual survey recording is later scope
+    await this.engagementService.submitSurvey(this.server, client, parsed.data);
   }
 }

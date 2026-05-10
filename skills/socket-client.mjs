@@ -51,14 +51,15 @@ const log = (label, payload) => {
   else console.log(`[${label}]`, payload ?? "");
 };
 
-function connect({ token, nickname }) {
+function connect({ token, nickname, label }) {
   const socket = io(wsUrl, {
     transports: ["websocket"],
     auth: token ? { sessionToken: token } : { nickname },
     reconnection: false,
     timeout: 10_000,
   });
-  socket.onAny((event, ...args) => log(`<- ${event}`, args[0]));
+  const tag = label ?? nickname ?? "socket";
+  socket.onAny((event, ...args) => log(`<- [${tag}] ${event}`, args[0]));
   return socket;
 }
 
@@ -131,11 +132,53 @@ async function cmdSpam() {
   s.disconnect();
 }
 
+function queueListener(socket, event) {
+  const queue = [];
+  const waiters = [];
+  socket.on(event, (payload) => {
+    while (waiters.length) {
+      const w = waiters.shift();
+      if (!w.done) {
+        w.done = true;
+        w.resolve(payload);
+        return;
+      }
+    }
+    queue.push(payload);
+  });
+  const next = (timeoutMs = 10_000) => {
+    const waiter = { done: false, resolve: null };
+    return new Promise((resolve, reject) => {
+      if (queue.length) {
+        waiter.done = true;
+        return resolve(queue.shift());
+      }
+      waiter.resolve = resolve;
+      waiters.push(waiter);
+      setTimeout(() => {
+        if (!waiter.done) {
+          waiter.done = true;
+          reject(new Error(`timeout waiting for ${event}`));
+        }
+      }, timeoutMs);
+    });
+  };
+  next.cancel = () => {
+    for (const w of waiters) w.done = true;
+    waiters.length = 0;
+  };
+  return next;
+}
+
 async function cmdHappyPath() {
   const turns = Number(values.turns);
   // Player A creates
-  const a = connect({ nickname: values["nickname-a"] });
+  const a = connect({ nickname: values["nickname-a"], label: "A" });
   await once(a, "connect", 5000);
+  const aTurn = queueListener(a, "game:your_turn");
+  const aVoting = queueListener(a, "game:voting_phase");
+  const aResults = queueListener(a, "game:results");
+  const aStarted = queueListener(a, "game:started");
   a.emit("lobby:create", {
     nickname: values["nickname-a"],
     settings: { turns, category: values.category },
@@ -144,35 +187,42 @@ async function cmdHappyPath() {
   log("A lobby:created", lobbyA);
 
   // Player B joins
-  const b = connect({ nickname: values["nickname-b"] });
+  const b = connect({ nickname: values["nickname-b"], label: "B" });
   await once(b, "connect", 5000);
+  const bTurn = queueListener(b, "game:your_turn");
+  const bVoting = queueListener(b, "game:voting_phase");
+  const bResults = queueListener(b, "game:results");
+  const bStarted = queueListener(b, "game:started");
   b.emit("lobby:join", { roomCode: lobbyA.roomCode, nickname: values["nickname-b"] });
   const lobbyB = await once(b, "lobby:joined");
   log("B lobby:joined", lobbyB);
 
-  const started = await Promise.all([once(a, "game:started"), once(b, "game:started")]);
+  const started = await Promise.all([aStarted(), bStarted()]);
   log("game:started", started[0]);
 
-  // Drive turns: alternate A then B until 2*turns messages have been delivered
+  // Drive turns
   const players = { [lobbyA.playerId]: a, [lobbyB.playerId]: b };
   for (let n = 0; n < turns * 2; n++) {
-    const me = await Promise.race([once(a, "game:your_turn"), once(b, "game:your_turn")]);
+    const me = await Promise.race([aTurn(), bTurn()]);
+    aTurn.cancel();
+    bTurn.cancel();
     const turnSocket = me.turnNumber % 2 === 1 ? a : b;
     turnSocket.emit("game:message", { text: `turn ${me.turnNumber} thoughts` });
     log(`-> game:message (turn ${me.turnNumber})`);
-    await sleep(200);
+    await sleep(50);
   }
 
-  const voting = await Promise.all([once(a, "game:voting_phase"), once(b, "game:voting_phase")]);
+  const voting = await Promise.all([aVoting(), bVoting()]);
   log("game:voting_phase", voting[0]);
 
-  // Submit naive votes (guess 50/50)
-  for (const [, sock] of Object.entries(players)) {
+  // Submit naive votes — each player only votes on opponent's messages
+  for (const [pid, sock] of Object.entries(players)) {
+    const targets = voting[0].messages.filter((m) => m.fromPlayerId !== pid);
     sock.emit("vote:submit", {
-      votes: voting[0].messages.map((m, i) => ({ messageId: m.id, guessedModified: i % 2 === 0 })),
+      votes: targets.map((m, i) => ({ messageId: m.id, guessedModified: i % 2 === 0 })),
     });
   }
-  const results = await Promise.all([once(a, "game:results"), once(b, "game:results")]);
+  const results = await Promise.all([aResults(), bResults()]);
   log("game:results", results[0]);
 
   a.disconnect();

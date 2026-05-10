@@ -110,11 +110,15 @@ export const player = pgTable(
       .references(() => game.id, { onDelete: "cascade" })
       .notNull(),
     displayName: varchar("display_name", { length: 32 }).notNull(),
+    position: integer("position"),
     sessionToken: varchar("session_token", { length: 64 })
       .notNull()
       .unique(),
     score: numeric("score", { precision: 5, scale: 2 }).notNull().default("0"),
     joinedAt: timestamp("joined_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
   },
@@ -182,7 +186,8 @@ export const engagementSurvey = pgTable(
       .references(() => player.id)
       .notNull(),
     rating: integer("rating").notNull(),
-    feedback: text("feedback"),
+    wouldReplay: boolean("would_replay").notNull().default(false),
+    comment: text("comment"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -192,5 +197,27 @@ export const engagementSurvey = pgTable(
     index("engagement_survey_game_id_idx").on(t.gameId),
     index("engagement_survey_player_id_idx").on(t.playerId),
     check("rating_check", sql`${t.rating} >= 1 AND ${t.rating} <= 5`),
+  ],
+);
+
+export const engagementAnalysis = pgTable(
+  "engagement_analysis",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    gameId: uuid("game_id")
+      .references(() => game.id, { onDelete: "cascade" })
+      .notNull(),
+    score: numeric("score", { precision: 4, scale: 3 }).notNull(),
+    dimensions: jsonb("dimensions"),
+    reasoning: text("reasoning"),
+    model: varchar("model", { length: 128 }),
+    promptId: uuid("prompt_id").references(() => prompt.id),
+    computedAt: timestamp("computed_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => [
+    uniqueIndex("engagement_analysis_game_idx").on(t.gameId),
+    index("engagement_analysis_prompt_id_idx").on(t.promptId),
   ],
 );

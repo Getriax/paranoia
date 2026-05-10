@@ -8,6 +8,8 @@ export const envSchema = z.object({
   OPENROUTER_API_KEY: z.string().min(1),
   OPENROUTER_BASE_URL: z.string().url().default('https://openrouter.ai/api/v1'),
   MODIFIER_DEFAULT_MODEL: z.string().min(1).default('deepseek/deepseek-v4-flash'),
+  ENGAGEMENT_ANALYSIS_ENABLED: z.enum(['true', 'false']).default('true'),
+  ENGAGEMENT_MODEL: z.string().min(1).optional(),
   ADMIN_TOKEN: z.string().min(1).optional(),
 });
 

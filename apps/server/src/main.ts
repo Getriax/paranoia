@@ -1,6 +1,16 @@
-import { NestFactory } from '@nestjs/core';
-import { Logger } from 'nestjs-pino';
-import { AppModule } from './app.module.js';
+import { config as loadEnv } from 'dotenv';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+loadEnv({ path: join(__dirname, '..', '..', '..', '.env') });
+loadEnv({ path: join(__dirname, '..', '.env') });
+
+const { NestFactory } = await import('@nestjs/core');
+const { Logger } = await import('nestjs-pino');
+const { AppModule } = await import('./app.module.js');
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
