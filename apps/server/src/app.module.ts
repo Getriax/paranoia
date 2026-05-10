@@ -20,7 +20,7 @@ import { envSchema } from './env/env.validation.js';
     LoggerModule,
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', 'public'),
-      exclude: ['/api/(.*)', '/health'],
+      exclude: ['/api/*', '/health'],
     }),
     HealthModule,
     WsModule,
