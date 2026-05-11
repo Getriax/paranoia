@@ -57,14 +57,27 @@ export const lobbyJoinedSchema = z.object({
   gameId: z.string().uuid(),
   playerId: z.string().uuid(),
   sessionToken: z.string().min(1),
+  roomCode: z.string().length(6),
   opponent: z.object({ playerId: z.string().uuid(), nickname: z.string() }).nullable(),
 });
 export type LobbyJoinedPayload = z.infer<typeof lobbyJoinedSchema>;
 
 export const lobbyPlayerJoinedSchema = z.object({
-  players: z.array(z.object({ playerId: z.string().uuid(), nickname: z.string() })),
+  players: z.array(
+    z.object({
+      playerId: z.string().uuid(),
+      nickname: z.string(),
+      ready: z.boolean().default(false),
+    }),
+  ),
 });
 export type LobbyPlayerJoinedPayload = z.infer<typeof lobbyPlayerJoinedSchema>;
+
+export const lobbyPlayerReadySchema = z.object({
+  playerId: z.string().uuid(),
+  ready: z.boolean(),
+});
+export type LobbyPlayerReadyPayload = z.infer<typeof lobbyPlayerReadySchema>;
 
 export const gameStartedSchema = z.object({
   topic: z.string(),
@@ -132,6 +145,7 @@ export type ErrorPayload = z.infer<typeof errorSchema>;
 export const ClientEvents = {
   LOBBY_CREATE: 'lobby:create',
   LOBBY_JOIN: 'lobby:join',
+  LOBBY_READY: 'lobby:ready',
   GAME_MESSAGE: 'game:message',
   VOTE_SUBMIT: 'vote:submit',
   SURVEY_SUBMIT: 'survey:submit',
@@ -141,6 +155,7 @@ export const ServerEvents = {
   LOBBY_CREATED: 'lobby:created',
   LOBBY_JOINED: 'lobby:joined',
   LOBBY_PLAYER_JOINED: 'lobby:player_joined',
+  LOBBY_PLAYER_READY: 'lobby:player_ready',
   GAME_STARTED: 'game:started',
   GAME_MESSAGE_RECEIVED: 'game:message_received',
   GAME_YOUR_TURN: 'game:your_turn',

@@ -6,6 +6,7 @@ import {
   lobbyCreatedSchema,
   lobbyJoinedSchema,
   lobbyPlayerJoinedSchema,
+  lobbyPlayerReadySchema,
   gameStartedSchema,
   gameMessageReceivedSchema,
   gameYourTurnSchema,
@@ -24,6 +25,7 @@ import {
   type LobbyCreatedPayload,
   type LobbyJoinedPayload,
   type LobbyPlayerJoinedPayload,
+  type LobbyPlayerReadyPayload,
   type GameStartedPayload,
   type GameMessageReceivedPayload,
   type GameYourTurnPayload,
@@ -44,6 +46,7 @@ export type SocketStatus = 'connecting' | 'connected' | 'reconnecting' | 'error'
 export interface ClientEventMap {
   [ClientEvents.LOBBY_CREATE]: LobbyCreatePayload;
   [ClientEvents.LOBBY_JOIN]: LobbyJoinPayload;
+  [ClientEvents.LOBBY_READY]: Record<string, never>;
   [ClientEvents.GAME_MESSAGE]: GameMessagePayload;
   [ClientEvents.VOTE_SUBMIT]: VoteSubmitPayload;
   [ClientEvents.SURVEY_SUBMIT]: SurveySubmitPayload;
@@ -53,6 +56,7 @@ export interface ServerEventMap {
   [ServerEvents.LOBBY_CREATED]: LobbyCreatedPayload;
   [ServerEvents.LOBBY_JOINED]: LobbyJoinedPayload;
   [ServerEvents.LOBBY_PLAYER_JOINED]: LobbyPlayerJoinedPayload;
+  [ServerEvents.LOBBY_PLAYER_READY]: LobbyPlayerReadyPayload;
   [ServerEvents.GAME_STARTED]: GameStartedPayload;
   [ServerEvents.GAME_MESSAGE_RECEIVED]: GameMessageReceivedPayload;
   [ServerEvents.GAME_YOUR_TURN]: GameYourTurnPayload;
@@ -69,6 +73,7 @@ const serverSchemas: { [K in keyof ServerEventMap]: ZodAnySchema } = {
   [ServerEvents.LOBBY_CREATED]: lobbyCreatedSchema,
   [ServerEvents.LOBBY_JOINED]: lobbyJoinedSchema,
   [ServerEvents.LOBBY_PLAYER_JOINED]: lobbyPlayerJoinedSchema,
+  [ServerEvents.LOBBY_PLAYER_READY]: lobbyPlayerReadySchema,
   [ServerEvents.GAME_STARTED]: gameStartedSchema,
   [ServerEvents.GAME_MESSAGE_RECEIVED]: gameMessageReceivedSchema,
   [ServerEvents.GAME_YOUR_TURN]: gameYourTurnSchema,

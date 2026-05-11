@@ -85,6 +85,7 @@ export const Setup: React.FC = () => {
     const offCreated = on(ServerEvents.LOBBY_CREATED, (payload) => {
       localStorage.setItem(`session_${payload.gameId}`, payload.sessionToken);
       localStorage.setItem(`playerId_${payload.gameId}`, payload.playerId);
+      localStorage.setItem(`nickname_${payload.gameId}`, nickname.trim());
       setLoading(false);
       navigate(`/lobby/${payload.roomCode}?gameId=${payload.gameId}`);
     });
@@ -92,12 +93,19 @@ export const Setup: React.FC = () => {
     const offJoined = on(ServerEvents.LOBBY_JOINED, (payload) => {
       localStorage.setItem(`session_${payload.gameId}`, payload.sessionToken);
       localStorage.setItem(`playerId_${payload.gameId}`, payload.playerId);
-      // Persist host's nickname as the opponent for the joiner
+      localStorage.setItem(`nickname_${payload.gameId}`, nickname.trim());
       if (payload.opponent) {
-        localStorage.setItem(`opponentNickname_${payload.gameId}`, payload.opponent.nickname);
+        localStorage.setItem(
+          `opponentNickname_${payload.gameId}`,
+          payload.opponent.nickname,
+        );
+        localStorage.setItem(
+          `opponentPlayerId_${payload.gameId}`,
+          payload.opponent.playerId,
+        );
       }
       setLoading(false);
-      navigate(`/lobby/${joinCode}?gameId=${payload.gameId}`);
+      navigate(`/lobby/${payload.roomCode}?gameId=${payload.gameId}`);
     });
 
     const offError = on(ServerEvents.ERROR, (payload) => {
@@ -110,7 +118,7 @@ export const Setup: React.FC = () => {
       offJoined();
       offError();
     };
-  }, [on, navigate, joinCode]);
+  }, [on, navigate, joinCode, nickname]);
 
   const handleCreate = () => {
     if (!nickname.trim()) {

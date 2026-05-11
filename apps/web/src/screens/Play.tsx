@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { DossierFrame, Stamp } from '../components/DossierFrame.js';
 import { ConnectionBanner, OpponentDisconnectModal } from '../components/ConnectionBanner.js';
 import { useGameSocket } from '../hooks/useGameSocket.js';
-import { ServerEvents, ClientEvents } from '@openclaw/shared';
+import { ServerEvents, ClientEvents, type GameStartedPayload } from '@openclaw/shared';
 
 type GameStatus = 'loading' | 'active' | 'voting';
 
@@ -498,20 +498,28 @@ const Voting: React.FC<VotingProps> = ({
 export const Play: React.FC = () => {
   const { gameId } = useParams<{ gameId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const seededStart = (location.state as GameStartedPayload | null) ?? null;
 
   const sessionToken = localStorage.getItem(`session_${gameId ?? ''}`) ?? undefined;
   const myPlayerId = localStorage.getItem(`playerId_${gameId ?? ''}`) ?? '';
 
   const { status, emit, on } = useGameSocket(sessionToken);
 
-  const [gameStatus, setGameStatus] = useState<GameStatus>('loading');
-  const [topic, setTopic] = useState('');
-  const [totalTurns, setTotalTurns] = useState(6);
+  const [gameStatus, setGameStatus] = useState<GameStatus>(
+    seededStart ? 'active' : 'loading',
+  );
+  const [topic, setTopic] = useState(seededStart?.topic ?? '');
+  const [totalTurns, setTotalTurns] = useState(seededStart?.totalTurns ?? 6);
   const [currentTurn, setCurrentTurn] = useState(1);
-  const [isMyTurn, setIsMyTurn] = useState(false);
+  const [isMyTurn, setIsMyTurn] = useState(
+    seededStart ? seededStart.firstPlayerId === myPlayerId : false,
+  );
   const [messages, setMessages] = useState<Message[]>([]);
   const [votingMessages, setVotingMessages] = useState<VotingMessage[]>([]);
-  const [opponentPlayerId, setOpponentPlayerId] = useState('');
+  const [opponentPlayerId, setOpponentPlayerId] = useState(
+    localStorage.getItem(`opponentPlayerId_${gameId ?? ''}`) ?? '',
+  );
   const [opponentNickname] = useState(
     localStorage.getItem(`opponentNickname_${gameId ?? ''}`) ?? 'OPPONENT',
   );

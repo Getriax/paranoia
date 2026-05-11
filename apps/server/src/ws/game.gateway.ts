@@ -141,6 +141,12 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @UseGuards(WsAuthGuard)
+  @SubscribeMessage(ClientEvents.LOBBY_READY)
+  async handleLobbyReady(@ConnectedSocket() client: Socket): Promise<void> {
+    await this.lobbyService.markReady(this.server, client);
+  }
+
+  @UseGuards(WsAuthGuard)
   @SubscribeMessage(ClientEvents.GAME_MESSAGE)
   async handleGameMessage(
     @MessageBody() payload: unknown,

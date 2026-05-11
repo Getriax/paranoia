@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Setup } from './screens/Setup.jsx';
+import { Join } from './screens/Join.jsx';
 import { Lobby } from './screens/Lobby.jsx';
 import { Play } from './screens/Play.jsx';
 import { Results } from './screens/Results.jsx';
@@ -17,6 +18,7 @@ export function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Setup />} />
+          <Route path="/join/:roomCode" element={<Join />} />
           <Route path="/lobby/:roomCode" element={<Lobby />} />
           <Route path="/play/:gameId" element={<Play />} />
           <Route path="/results/:gameId" element={<Results />} />

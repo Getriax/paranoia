@@ -12,8 +12,8 @@ import {
   type LobbyCreatedPayload,
   type LobbyJoinedPayload,
   type LobbyPlayerJoinedPayload,
+  type LobbyPlayerReadyPayload,
   type GameStartedPayload,
-  type GameYourTurnPayload,
 } from '@openclaw/shared';
 
 const DEFAULT_MODEL =
@@ -22,6 +22,9 @@ const DEFAULT_MODEL =
 @Injectable()
 export class LobbyService {
   private readonly logger = new Logger(LobbyService.name);
+
+  // Ephemeral ready tracking per game. Wiped when game starts or server restarts.
+  private readonly readyByGame = new Map<string, Set<string>>();
 
   constructor(private readonly sessionService: SessionService) {}
 
@@ -190,17 +193,10 @@ export class LobbyService {
       return;
     }
 
-    const [activePrompt] = await db
-      .select()
-      .from(prompt)
-      .where(and(eq(prompt.name, 'modifier-v1'), eq(prompt.isActive, true)))
-      .orderBy(sql`${prompt.version} DESC`)
-      .limit(1);
-
     const sessionToken = generateSessionToken();
 
-    const result = await db.transaction(async (tx) => {
-      const [joiner] = await tx
+    const joiner = await db.transaction(async (tx) => {
+      const [j] = await tx
         .insert(player)
         .values({
           gameId: gameRow.id,
@@ -209,93 +205,152 @@ export class LobbyService {
           sessionToken,
         })
         .returning();
-      if (!joiner) throw new Error('player insert returned no row');
-
-      await tx
-        .update(game)
-        .set({
-          status: 'playing',
-          promptId: activePrompt?.id ?? null,
-          currentPlayerId: host.id,
-          updatedAt: new Date(),
-        })
-        .where(eq(game.id, gameRow.id));
-
-      return joiner;
+      if (!j) throw new Error('player insert returned no row');
+      return j;
     });
 
-    await this.sessionService.cacheSession(
-      sessionToken,
-      result.id,
-      gameRow.id,
-    );
+    await this.sessionService.cacheSession(sessionToken, joiner.id, gameRow.id);
 
-    const [updatedGame] = await db
-      .select()
-      .from(game)
-      .where(eq(game.id, gameRow.id))
-      .limit(1);
-
-    const [topicRow] = gameRow.topicId
-      ? await db
-          .select()
-          .from(topic)
-          .where(eq(topic.id, gameRow.topicId))
-          .limit(1)
-      : [undefined];
-
-    if (!topicRow) {
-      socket.emit(ServerEvents.ERROR, {
-        code: 'TOPIC_MISSING',
-        message: 'Game has no topic assigned',
-      });
-      return;
-    }
-
-    socket.data.game = updatedGame ?? gameRow;
-    socket.data.player = result;
+    socket.data.game = gameRow;
+    socket.data.player = joiner;
     const room = `game:${gameRow.id}`;
     await socket.join(room);
 
+    const readySet = this.readyByGame.get(gameRow.id) ?? new Set<string>();
+
     const joined: LobbyJoinedPayload = {
       gameId: gameRow.id,
-      playerId: result.id,
+      playerId: joiner.id,
       sessionToken,
+      roomCode: code,
       opponent: { playerId: host.id, nickname: host.displayName },
     };
     socket.emit(ServerEvents.LOBBY_JOINED, joined);
 
     const playerJoined: LobbyPlayerJoinedPayload = {
       players: [
-        { playerId: host.id, nickname: host.displayName },
-        { playerId: result.id, nickname: result.displayName },
+        {
+          playerId: host.id,
+          nickname: host.displayName,
+          ready: readySet.has(host.id),
+        },
+        {
+          playerId: joiner.id,
+          nickname: joiner.displayName,
+          ready: readySet.has(joiner.id),
+        },
       ],
     };
-    socket.to(room).emit(ServerEvents.LOBBY_PLAYER_JOINED, playerJoined);
+    server.to(room).emit(ServerEvents.LOBBY_PLAYER_JOINED, playerJoined);
+
+    this.logger.log(
+      `lobby:joined roomCode=${code} gameId=${gameRow.id} joiner=${payload.nickname}`,
+    );
+  }
+
+  async markReady(server: Server, socket: Socket): Promise<void> {
+    const playerData = socket.data?.player as { id: string } | undefined;
+    const gameData = socket.data?.game as { id: string; status: string } | undefined;
+    if (!playerData || !gameData) {
+      socket.emit(ServerEvents.ERROR, {
+        code: 'NOT_IN_GAME',
+        message: 'No game context — please rejoin',
+      });
+      return;
+    }
+    if (gameData.status !== 'lobby') {
+      // already started / finished — ignore
+      return;
+    }
+
+    let set = this.readyByGame.get(gameData.id);
+    if (!set) {
+      set = new Set<string>();
+      this.readyByGame.set(gameData.id, set);
+    }
+
+    if (set.has(playerData.id)) return; // idempotent
+    set.add(playerData.id);
+
+    const room = `game:${gameData.id}`;
+    const readyPayload: LobbyPlayerReadyPayload = {
+      playerId: playerData.id,
+      ready: true,
+    };
+    server.to(room).emit(ServerEvents.LOBBY_PLAYER_READY, readyPayload);
+
+    const players = await db
+      .select()
+      .from(player)
+      .where(eq(player.gameId, gameData.id));
+
+    if (players.length < 2) return;
+    const allReady = players.every((p) => set!.has(p.id));
+    if (!allReady) return;
+
+    await this.startGame(server, gameData.id, players);
+  }
+
+  private async startGame(
+    server: Server,
+    gameId: string,
+    players: { id: string }[],
+  ): Promise<void> {
+    const [gameRow] = await db
+      .select()
+      .from(game)
+      .where(eq(game.id, gameId))
+      .limit(1);
+    if (!gameRow) return;
+    if (gameRow.status !== 'lobby') return; // already started by a concurrent ready
+
+    const [activePrompt] = await db
+      .select()
+      .from(prompt)
+      .where(and(eq(prompt.name, 'modifier-v1'), eq(prompt.isActive, true)))
+      .orderBy(sql`${prompt.version} DESC`)
+      .limit(1);
+
+    const firstPlayerId = players[Math.floor(Math.random() * players.length)]!.id;
+
+    await db
+      .update(game)
+      .set({
+        status: 'playing',
+        promptId: activePrompt?.id ?? null,
+        currentPlayerId: firstPlayerId,
+        updatedAt: new Date(),
+      })
+      .where(eq(game.id, gameId));
+
+    // Refresh socket cached game.status for both players so subsequent emits
+    // (and the WS auth guard's game-status checks) see 'playing'.
+    const room = `game:${gameId}`;
+    for (const sock of await server.in(room).fetchSockets()) {
+      if (sock.data?.game?.id === gameId) {
+        sock.data.game = { ...sock.data.game, status: 'playing', currentPlayerId: firstPlayerId };
+      }
+    }
+
+    const [topicRow] = gameRow.topicId
+      ? await db.select().from(topic).where(eq(topic.id, gameRow.topicId)).limit(1)
+      : [undefined];
+    if (!topicRow) {
+      this.logger.error(`startGame: game ${gameId} has no topic`);
+      return;
+    }
 
     const started: GameStartedPayload = {
       topic: topicRow.text,
       totalTurns: gameRow.totalTurns,
-      firstPlayerId: host.id,
+      firstPlayerId,
     };
     server.to(room).emit(ServerEvents.GAME_STARTED, started);
 
-    const yourTurn: GameYourTurnPayload = {
-      turnNumber: 1,
-      remainingTurns: gameRow.totalTurns * 2,
-    };
-    setTimeout(() => {
-      void (async () => {
-        for (const sock of await server.in(room).fetchSockets()) {
-          if (sock.data?.player?.id === host.id) {
-            sock.emit(ServerEvents.GAME_YOUR_TURN, yourTurn);
-          }
-        }
-      })();
-    }, 50);
+    this.readyByGame.delete(gameId);
 
     this.logger.log(
-      `lobby:joined roomCode=${code} gameId=${gameRow.id} joiner=${payload.nickname}`,
+      `game:started gameId=${gameId} firstPlayerId=${firstPlayerId}`,
     );
   }
 

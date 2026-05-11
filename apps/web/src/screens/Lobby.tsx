@@ -1,9 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { DossierFrame, FieldRow, Stamp } from '../components/DossierFrame.js';
 import { ConnectionBanner } from '../components/ConnectionBanner.js';
 import { useGameSocket } from '../hooks/useGameSocket.js';
-import { ServerEvents } from '@openclaw/shared';
+import { ClientEvents, ServerEvents } from '@openclaw/shared';
+
+interface PlayerSlot {
+  playerId: string;
+  nickname: string;
+  ready: boolean;
+}
 
 export const Lobby: React.FC = () => {
   const { roomCode } = useParams<{ roomCode: string }>();
@@ -13,53 +19,90 @@ export const Lobby: React.FC = () => {
 
   const sessionToken = localStorage.getItem(`session_${gameId}`) ?? undefined;
   const myPlayerId = localStorage.getItem(`playerId_${gameId}`) ?? '';
+  const myNickname = localStorage.getItem(`nickname_${gameId}`) ?? '';
+  const seededOpponentId =
+    localStorage.getItem(`opponentPlayerId_${gameId}`) ?? '';
+  const seededOpponentNickname =
+    localStorage.getItem(`opponentNickname_${gameId}`) ?? '';
 
-  const { status, on } = useGameSocket(sessionToken);
+  const { status, emit, on } = useGameSocket(sessionToken);
 
-  const [players, setPlayers] = useState<{ playerId: string; nickname: string }[]>([]);
-  const [gameStarted, setGameStarted] = useState(false);
+  const initialPlayers = useMemo<PlayerSlot[]>(() => {
+    const me: PlayerSlot | null = myPlayerId
+      ? { playerId: myPlayerId, nickname: myNickname || 'YOU', ready: false }
+      : null;
+    const opp: PlayerSlot | null = seededOpponentId
+      ? {
+          playerId: seededOpponentId,
+          nickname: seededOpponentNickname || 'OPPONENT',
+          ready: false,
+        }
+      : null;
+    return [me, opp].filter((p): p is PlayerSlot => p !== null);
+  }, [myPlayerId, myNickname, seededOpponentId, seededOpponentNickname]);
+
+  const [players, setPlayers] = useState<PlayerSlot[]>(initialPlayers);
   const [copied, setCopied] = useState(false);
+  const [myReadyPending, setMyReadyPending] = useState(false);
 
   useEffect(() => {
     const offJoined = on(ServerEvents.LOBBY_PLAYER_JOINED, (payload) => {
-      setPlayers(payload.players);
-      // Persist opponent nickname for use in Play screen
+      setPlayers(
+        payload.players.map((p) => ({
+          playerId: p.playerId,
+          nickname: p.nickname,
+          ready: p.ready,
+        })),
+      );
       const opp = payload.players.find((p) => p.playerId !== myPlayerId);
       if (opp) {
         localStorage.setItem(`opponentNickname_${gameId}`, opp.nickname);
-      }
-      if (payload.players.length >= 2 && gameStarted) {
-        navigate(`/play/${gameId}`);
+        localStorage.setItem(`opponentPlayerId_${gameId}`, opp.playerId);
       }
     });
 
-    const offStarted = on(ServerEvents.GAME_STARTED, () => {
-      setGameStarted(true);
-      navigate(`/play/${gameId}`);
+    const offReady = on(ServerEvents.LOBBY_PLAYER_READY, (payload) => {
+      setPlayers((prev) =>
+        prev.map((p) =>
+          p.playerId === payload.playerId ? { ...p, ready: payload.ready } : p,
+        ),
+      );
+    });
+
+    const offStarted = on(ServerEvents.GAME_STARTED, (payload) => {
+      navigate(`/play/${gameId}`, { state: payload });
     });
 
     return () => {
       offJoined();
+      offReady();
       offStarted();
     };
-  }, [on, navigate, gameId, gameStarted, myPlayerId]);
+  }, [on, navigate, gameId, myPlayerId]);
 
   const handleCopy = async () => {
-    const url = `${window.location.origin}/lobby/${roomCode ?? ''}?gameId=${gameId}`;
+    const url = `${window.location.origin}/join/${roomCode ?? ''}`;
     try {
       await navigator.clipboard.writeText(url);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
     } catch {
-      // fallback: copy just the code
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      // ignore; we still show the visual cue
     }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
-  const myNickname = players.find((p) => p.playerId === myPlayerId)?.nickname ?? '—';
-  const opponentNickname =
-    players.find((p) => p.playerId !== myPlayerId)?.nickname ?? null;
+  const me = players.find((p) => p.playerId === myPlayerId);
+  const opponent = players.find((p) => p.playerId !== myPlayerId);
+  const meReady = me?.ready ?? false;
+  const oppReady = opponent?.ready ?? false;
+  const bothPresent = !!opponent;
+  const canReady = bothPresent && !meReady && !myReadyPending;
+
+  const handleReady = () => {
+    if (!canReady) return;
+    setMyReadyPending(true);
+    emit(ClientEvents.LOBBY_READY, {});
+  };
 
   return (
     <>
@@ -79,16 +122,20 @@ export const Lobby: React.FC = () => {
           <div
             style={{
               fontWeight: 800,
-              fontSize: 30,
+              fontSize: 28,
               lineHeight: 1.05,
               letterSpacing: -0.5,
               marginBottom: 2,
             }}
           >
-            {opponentNickname ? (
-              <>BOTH PARTIES<br />ATTACHED.</>
+            {bothPresent ? (
+              <>
+                BOTH PARTIES<br />ATTACHED.
+              </>
             ) : (
-              <>AWAITING<br />SECOND<br />SUBJECT.</>
+              <>
+                AWAITING<br />SECOND<br />SUBJECT.
+              </>
             )}
           </div>
           <div
@@ -99,8 +146,8 @@ export const Lobby: React.FC = () => {
               maxWidth: 280,
             }}
           >
-            {opponentNickname
-              ? 'File is ready. Game will begin automatically.'
+            {bothPresent
+              ? 'File is established. Both parties must STAMP READY to commence.'
               : 'Room established. Share the code below or send the invitation link. File opens when the second subject attaches.'}
           </div>
         </div>
@@ -108,7 +155,7 @@ export const Lobby: React.FC = () => {
         {/* Room code box */}
         <div
           style={{
-            margin: '22px 14px 0',
+            margin: '18px 14px 0',
             border: '1.5px solid #1a1815',
             position: 'relative',
           }}
@@ -127,8 +174,8 @@ export const Lobby: React.FC = () => {
           <div
             style={{
               textAlign: 'center',
-              padding: '18px 0 14px',
-              fontSize: 48,
+              padding: '14px 0 10px',
+              fontSize: 40,
               fontWeight: 800,
               letterSpacing: 8,
             }}
@@ -146,14 +193,14 @@ export const Lobby: React.FC = () => {
             }}
           >
             <span>
-              {opponentNickname ? '● 2/2 ATTACHED' : '○ AWAITING SECOND SUBJECT'}
+              {bothPresent ? '● 2/2 ATTACHED' : '○ AWAITING SECOND SUBJECT'}
             </span>
             <span>AUTH · SECURE</span>
           </div>
         </div>
 
         {/* Subject registry */}
-        <div style={{ padding: '18px 14px 0' }}>
+        <div style={{ padding: '14px 14px 0' }}>
           <div
             style={{
               fontSize: 9,
@@ -164,12 +211,29 @@ export const Lobby: React.FC = () => {
           >
             SUBJECT REGISTRY
           </div>
-          <FieldRow label="Subject A" value={`${myNickname} · ready`} />
+          <FieldRow
+            label="Subject A"
+            value={
+              <span>
+                {me?.nickname ?? myNickname ?? '—'} ·{' '}
+                <span style={{ color: meReady ? '#1a1815' : '#8a1c14', fontWeight: 700 }}>
+                  {meReady ? 'READY' : 'STANDBY'}
+                </span>
+              </span>
+            }
+          />
           <FieldRow
             label="Subject B"
             value={
-              opponentNickname ? (
-                `${opponentNickname} · ready`
+              opponent ? (
+                <span>
+                  {opponent.nickname} ·{' '}
+                  <span
+                    style={{ color: oppReady ? '#1a1815' : '#8a1c14', fontWeight: 700 }}
+                  >
+                    {oppReady ? 'READY' : 'STANDBY'}
+                  </span>
+                </span>
               ) : (
                 <span style={{ color: '#7a6f60', fontStyle: 'italic' }}>
                   —— pending arrival
@@ -177,12 +241,18 @@ export const Lobby: React.FC = () => {
               )
             }
           />
-          <FieldRow label="Game ID" value={gameId.slice(0, 8) + '…'} />
+          <FieldRow label="Room" value={roomCode ?? '——'} />
         </div>
 
         <div style={{ position: 'absolute', top: 200, right: 12 }}>
-          {opponentNickname ? (
-            <Stamp rotate={-8} color="#8a1c14">READY</Stamp>
+          {meReady && oppReady ? (
+            <Stamp rotate={-8} color="#8a1c14">
+              READY
+            </Stamp>
+          ) : bothPresent ? (
+            <Stamp rotate={6} color="#7a6f60">
+              STAND BY
+            </Stamp>
           ) : (
             <Stamp rotate={6}>PROVISIONAL</Stamp>
           )}
@@ -197,24 +267,53 @@ export const Lobby: React.FC = () => {
             padding: '0 14px',
           }}
         >
-          <button
-            onClick={handleCopy}
-            style={{
-              width: '100%',
-              border: '1.5px solid #1a1815',
-              padding: '12px 14px',
-              background: '#1a1815',
-              color: '#efe9dc',
-              textAlign: 'center',
-              letterSpacing: 3,
-              fontWeight: 800,
-              fontSize: 13,
-              fontFamily: "'JetBrains Mono', 'IBM Plex Mono', ui-monospace, Menlo, monospace",
-              cursor: 'pointer',
-            }}
-          >
-            {copied ? '✓ LINK COPIED' : '◆ COPY LINK · INVITE'}
-          </button>
+          {/* Primary: ready / copy depending on state */}
+          {bothPresent ? (
+            <button
+              onClick={handleReady}
+              disabled={!canReady}
+              style={{
+                width: '100%',
+                border: '1.5px solid #1a1815',
+                padding: '12px 14px',
+                background: meReady ? '#7a6f60' : '#1a1815',
+                color: '#efe9dc',
+                textAlign: 'center',
+                letterSpacing: 3,
+                fontWeight: 800,
+                fontSize: 13,
+                fontFamily:
+                  "'JetBrains Mono', 'IBM Plex Mono', ui-monospace, Menlo, monospace",
+                cursor: canReady ? 'pointer' : 'not-allowed',
+              }}
+            >
+              {meReady
+                ? oppReady
+                  ? '◆ COMMENCING…'
+                  : '✓ READY · AWAITING OPPONENT'
+                : '◆ STAMP READY'}
+            </button>
+          ) : (
+            <button
+              onClick={handleCopy}
+              style={{
+                width: '100%',
+                border: '1.5px solid #1a1815',
+                padding: '12px 14px',
+                background: '#1a1815',
+                color: '#efe9dc',
+                textAlign: 'center',
+                letterSpacing: 3,
+                fontWeight: 800,
+                fontSize: 13,
+                fontFamily:
+                  "'JetBrains Mono', 'IBM Plex Mono', ui-monospace, Menlo, monospace",
+                cursor: 'pointer',
+              }}
+            >
+              {copied ? '✓ LINK COPIED' : '◆ COPY LINK · INVITE'}
+            </button>
+          )}
           <div
             style={{
               textAlign: 'center',
@@ -224,7 +323,9 @@ export const Lobby: React.FC = () => {
               letterSpacing: 1.5,
             }}
           >
-            OR FILE A NEW CASE · ↩ EXIT
+            {bothPresent
+              ? 'BOTH MUST STAMP READY — GAME COMMENCES AUTOMATICALLY'
+              : 'SHARE LINK · OR HAVE THEM ENTER THE CODE'}
           </div>
         </div>
       </DossierFrame>
