@@ -42,6 +42,9 @@ FROM node:22-alpine AS runtime
 RUN apk add --no-cache wget && addgroup -S app && adduser -S app -G app
 WORKDIR /app
 COPY --from=bundle /app/bundle ./
+COPY --from=build /app/apps/server/dist ./dist
+COPY --from=build /app/apps/server/drizzle ./drizzle
+COPY --from=build /app/apps/server/seeds ./seeds
 COPY --from=build /app/apps/web/dist ./public
 USER app
 EXPOSE 3000

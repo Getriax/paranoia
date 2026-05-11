@@ -12,6 +12,7 @@ const { NestFactory } = await import('@nestjs/core');
 const { Logger } = await import('nestjs-pino');
 const { AppModule } = await import('./app.module.js');
 const { runMigrations } = await import('./db/migrate.js');
+const { runSeed } = await import('./db/seed.js');
 
 async function bootstrap() {
   if (process.env.RUN_MIGRATIONS_ON_BOOT !== 'false') {
@@ -23,6 +24,21 @@ async function bootstrap() {
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error('[migrate] failed', err);
+      process.exit(1);
+    }
+  }
+
+  if (process.env.RUN_SEED_ON_BOOT !== 'false') {
+    const startedAt = Date.now();
+    try {
+      const result = await runSeed();
+      // eslint-disable-next-line no-console
+      console.log(
+        `[seed] topicsAdded=${result.topicsAdded} topicsPruned=${result.topicsPruned} promptUpdated=${result.promptUpdated} in ${Date.now() - startedAt}ms`,
+      );
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('[seed] failed', err);
       process.exit(1);
     }
   }
