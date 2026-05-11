@@ -8,6 +8,13 @@
       "when": 1778442199803,
       "tag": "0000_sleepy_chat",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1778976000000,
+      "tag": "0001_fix_drift",
+      "breakpoints": true
     }
   ]
 }
