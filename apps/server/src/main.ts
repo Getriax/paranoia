@@ -11,34 +11,40 @@ loadEnv({ path: join(__dirname, '..', '.env') });
 const { NestFactory } = await import('@nestjs/core');
 const { Logger } = await import('nestjs-pino');
 const { AppModule } = await import('./app.module.js');
+const { withBootLock } = await import('./db/boot.js');
 const { runMigrations } = await import('./db/migrate.js');
 const { runSeed } = await import('./db/seed.js');
 
 async function bootstrap() {
-  if (process.env.RUN_MIGRATIONS_ON_BOOT !== 'false') {
-    const startedAt = Date.now();
-    try {
-      await runMigrations();
-      // eslint-disable-next-line no-console
-      console.log(`[migrate] applied in ${Date.now() - startedAt}ms`);
-    } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error('[migrate] failed', err);
-      process.exit(1);
-    }
-  }
+  const needsMigrate = process.env.RUN_MIGRATIONS_ON_BOOT !== 'false';
+  const needsSeed = process.env.RUN_SEED_ON_BOOT !== 'false';
 
-  if (process.env.RUN_SEED_ON_BOOT !== 'false') {
-    const startedAt = Date.now();
+  if (needsMigrate || needsSeed) {
+    const lockWait = Date.now();
     try {
-      const result = await runSeed();
-      // eslint-disable-next-line no-console
-      console.log(
-        `[seed] topicsAdded=${result.topicsAdded} topicsPruned=${result.topicsPruned} promptUpdated=${result.promptUpdated} in ${Date.now() - startedAt}ms`,
-      );
+      await withBootLock(async () => {
+        // eslint-disable-next-line no-console
+        console.log(`[boot] acquired init lock after ${Date.now() - lockWait}ms`);
+
+        if (needsMigrate) {
+          const t0 = Date.now();
+          await runMigrations();
+          // eslint-disable-next-line no-console
+          console.log(`[migrate] applied in ${Date.now() - t0}ms`);
+        }
+
+        if (needsSeed) {
+          const t0 = Date.now();
+          const result = await runSeed();
+          // eslint-disable-next-line no-console
+          console.log(
+            `[seed] topicsAdded=${result.topicsAdded} topicsPruned=${result.topicsPruned} promptUpdated=${result.promptUpdated} in ${Date.now() - t0}ms`,
+          );
+        }
+      });
     } catch (err) {
       // eslint-disable-next-line no-console
-      console.error('[seed] failed', err);
+      console.error('[boot] init failed', err);
       process.exit(1);
     }
   }
